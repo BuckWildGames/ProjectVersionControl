@@ -7,7 +7,6 @@ var dock: Control
 
 func _enter_tree():
 	dock = VersionControlDock.instantiate()
-	dock.plugin = self
 	add_control_to_dock(EditorPlugin.DOCK_SLOT_LEFT_BR, dock)
 
 

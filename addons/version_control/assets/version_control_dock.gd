@@ -1,6 +1,8 @@
 @tool
 extends Control
 
+const VERSION: String = "1.3"
+
 const CLICK_DELAY: float = 0.5
 
 @onready var major_spin: SpinBox = $PanelContainer/MarginContainer/ScrollContainer/VBoxContainer/Major/SpinBox
@@ -14,8 +16,7 @@ const CLICK_DELAY: float = 0.5
 @onready var commit_label: Label = $PanelContainer/MarginContainer/ScrollContainer/VBoxContainer/Label
 @onready var reset_button: Button = $PanelContainer/MarginContainer/ScrollContainer/VBoxContainer/Button2
 
-var plugin: EditorPlugin
-var config_file: ConfigFile
+var config_file: ConfigFile = null
 var config_path: String = "res://addons/version_control/version_config.cfg"
 
 var version: Dictionary = {"major": 0, "minor": 0, "patch": 0}
@@ -68,13 +69,19 @@ func _save_config() -> void:
 	config_file.set_value("config", "auto_patch", auto_update_check.is_pressed())
 	config_file.set_value("config", "auto_commit", auto_commit_check.is_pressed())
 	config_file.set_value("config", "last_commit", last_commit)
-	config_file.save(config_path)
+	var err = config_file.save(config_path)
+	if not err == OK:
+		push_error("Failed to save config")
+		return
 	print("Saved version control config")
 
 
 func _clear_config() -> void:
 	config_file.clear()
-	config_file.save(config_path)
+	var err = config_file.save(config_path)
+	if not err == OK:
+		push_error("Failed to save config")
+		return
 	print("Cleared version control config")
 
 
@@ -102,14 +109,15 @@ func _get_project_settings() -> Dictionary:
 
 
 func _commit_to_git(commit_msg: String) -> void:
+	var old_commit = last_commit
+	last_commit = _get_version_string()
+	_save_config()
+	EditorInterface.save_all_scenes()
 	var output = []
 	var exit_code = OS.execute("git", ["add", "."], output)
 	if exit_code != 0:
 		push_error("Failed to stage files with git")
 		return
-	var old_commit = last_commit
-	last_commit = _get_version_string()
-	_save_config()
 	exit_code = OS.execute("git", ["commit", "-m", _get_version_string(), "-m", commit_msg], output)
 	if exit_code == 0:
 		commit_label.set_text("Last Commit: %s" % last_commit)
